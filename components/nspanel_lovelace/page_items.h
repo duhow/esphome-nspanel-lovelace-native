@@ -6,6 +6,7 @@
 #include "page_item_base.h"
 #include "page_item_visitor.h"
 #include "types.h"
+#include "esphome/core/automation.h"
 #include <array>
 #include <functional>
 #include <string>
@@ -183,7 +184,7 @@ public:
 protected:
   Trigger<> trigger_;
   
-  // output: internalName~icon~iconColor~displayName~buttonType
+  // output: internalName~icon~iconColor~displayName
   std::string &render_(std::string &buffer) override;
 };
 

@@ -435,9 +435,10 @@ def validate_config(config):
                 # Action entities don't need entity_id validation
                 continue
             
+            # Regular entity validation - entity_id is required by schema
             entity_id = entity_config.get(CONF_ENTITY_ID)
-            # entity_id is optional for action-only items, which are handled above
-            if entity_id is None:
+            if not entity_id:
+                # Schema should prevent this, but handle gracefully
                 continue
             
             if entity_id.startswith('navigate'):
