@@ -60,8 +60,7 @@ nspanel_lovelace:
       title: Services
       entities:
         # Call vacuum service
-        - type: action
-          icon: robot-vacuum
+        - icon: robot-vacuum
           name: Start Vacuum
           on_press:
             - homeassistant.service:
@@ -70,8 +69,7 @@ nspanel_lovelace:
                   entity_id: vacuum.mi_robot
         
         # Call cover service with area target
-        - type: action
-          id: open_all_covers
+        - id: open_all_covers
           icon: chevron-double-up
           name: Open All
           on_press:
@@ -82,8 +80,7 @@ nspanel_lovelace:
                     area_id: living_room_area_id
         
         # Call scene
-        - type: action
-          icon: movie
+        - icon: movie
           name: Movie Time
           on_press:
             - homeassistant.service:
@@ -100,22 +97,19 @@ nspanel_lovelace:
       id: cover_controls
       title: Rollo WZ
       entities:
-        - type: action
-          id: cover_open_action
+        - id: cover_open_action
           icon: chevron-double-up
           name: Auf
           on_press:
             - button.press: cover_wz_open
             
-        - type: action
-          id: cover_stop_action
+        - id: cover_stop_action
           icon: stop
           name: Stop
           on_press:
             - button.press: cover_wz_stop
             
-        - type: action
-          id: cover_close_action
+        - id: cover_close_action
           icon: chevron-double-down
           name: Zu
           on_press:
@@ -130,15 +124,13 @@ nspanel_lovelace:
       title: Scenes
       entities:
         # Execute ESPHome script
-        - type: action
-          icon: script-text
+        - icon: script-text
           name: Run Script
           on_press:
             - script.execute: night_mode_script
         
         # Multiple actions in sequence
-        - type: action
-          icon: power
+        - icon: power
           name: Good Night
           on_press:
             - homeassistant.service:
@@ -152,8 +144,7 @@ nspanel_lovelace:
             - logger.log: "Good night sequence complete"
         
         # Simple logging action for testing
-        - type: action
-          icon: gesture-tap-button
+        - icon: gesture-tap-button
           name: Test Log
           on_press:
             - logger.log: "Test button pressed from NSPanel!"
@@ -168,8 +159,7 @@ nspanel_lovelace:
           name: Temperature
         
         # Action button that doesn't need entity state
-        - type: action
-          icon: refresh
+        - icon: refresh
           name: Refresh
           on_press:
             - homeassistant.service:

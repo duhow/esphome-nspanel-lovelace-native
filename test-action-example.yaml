@@ -31,9 +31,7 @@ nspanel_lovelace:
         - entity_id: light.test_light
           name: Test Light
         # Action-only button that calls a Home Assistant service
-        - type: action
-          id: vacuum_action
-          icon: robot-vacuum
+        - icon: robot-vacuum
           name: Vacuum Start
           on_press:
             - homeassistant.service:
@@ -41,8 +39,7 @@ nspanel_lovelace:
                 data:
                   entity_id: vacuum.mi_robot
         # Action-only button for internal ESPHome action
-        - type: action
-          icon: arrow-up
+        - icon: arrow-up
           name: Test Script
           on_press:
             - logger.log: "Action button pressed!"

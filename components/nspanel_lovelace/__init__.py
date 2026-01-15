@@ -143,11 +143,8 @@ CONF_CARD_HIDDEN = "hidden"
 CONF_CARD_TITLE = "title"
 CONF_CARD_ENTITIES = "entities"
 CONF_CARD_ENTITIES_NAME = "name"
-CONF_CARD_ENTITY_TYPE = "type"
 CONF_CARD_ENTITY_ID = "id"
 CONF_ON_PRESS = "on_press"
-
-CARD_ENTITY_TYPE_ACTION = "action"
 
 CARD_ENTITIES="cardEntities"
 CARD_GRID="cardGrid"
@@ -349,19 +346,26 @@ SCHEMA_SCREENSAVER = cv.Schema({
     cv.Optional(CONF_SCREENSAVER_STATUS_ICON_RIGHT): SCHEMA_STATUS_ICON,
 })
 
-SCHEMA_CARD_ACTION_ENTITY = cv.Schema({
-    cv.Required(CONF_CARD_ENTITY_TYPE): cv.one_of(CARD_ENTITY_TYPE_ACTION),
-    cv.Optional(CONF_CARD_ENTITY_ID): valid_uuid,
-    cv.Optional(CONF_CARD_ENTITIES_NAME): cv.string,
-    cv.Optional(CONF_ICON): SCHEMA_ICON,
-    cv.Required(CONF_ON_PRESS): automation.validate_automation(single=True),
-})
+def validate_entity_or_action(config):
+    """Validate that entity has either entity_id or on_press defined."""
+    has_entity_id = CONF_ENTITY_ID in config
+    has_on_press = CONF_ON_PRESS in config
+    
+    if not has_entity_id and not has_on_press:
+        raise cv.Invalid("Either 'entity_id' or 'on_press' must be specified")
+    
+    return config
 
-SCHEMA_CARD_ENTITY = cv.Schema({
-    cv.Required(CONF_ENTITY_ID): valid_entity_id(),
-    cv.Optional(CONF_CARD_ENTITIES_NAME): cv.string,
-    cv.Optional(CONF_ICON): SCHEMA_ICON,
-})
+SCHEMA_CARD_ENTITY = cv.All(
+    cv.Schema({
+        cv.Optional(CONF_ENTITY_ID): valid_entity_id(),
+        cv.Optional(CONF_CARD_ENTITY_ID): valid_uuid,
+        cv.Optional(CONF_CARD_ENTITIES_NAME): cv.string,
+        cv.Optional(CONF_ICON): SCHEMA_ICON,
+        cv.Optional(CONF_ON_PRESS): automation.validate_automation(single=True),
+    }),
+    validate_entity_or_action
+)
 
 SCHEMA_CARD_BASE = cv.Schema({
     cv.Optional(CONF_ID): valid_uuid,
@@ -371,9 +375,6 @@ SCHEMA_CARD_BASE = cv.Schema({
     # note: Max is limited by HMI firmware: https://github.com/joBr99/nspanel-lovelace-ui/blob/22e96f2b3ad0cd3382008eac9b4d6a27982404b8/HMI/README.md?plain=1#L91
     cv.Optional(CONF_SLEEP_TIMEOUT, default=10): cv.int_range(0, 120)
 })
-
-# Combined schema that accepts either regular entities or action entities
-SCHEMA_CARD_ENTITY_OR_ACTION = cv.Any(SCHEMA_CARD_ENTITY, SCHEMA_CARD_ACTION_ENTITY)
 
 def add_entity_id(id: str):
     global entity_ids, entity_id_index
@@ -430,8 +431,8 @@ def validate_config(config):
             raise cv.Invalid(f"There must be at most {length_limits[1]} entities for '{card_config[CONF_CARD_TYPE]}' cards", err_path)
 
         for entity_config in entities:
-            # Check if this is an action entity (doesn't require HA entity_id validation)
-            if CONF_CARD_ENTITY_TYPE in entity_config and entity_config[CONF_CARD_ENTITY_TYPE] == CARD_ENTITY_TYPE_ACTION:
+            # Check if this is an action entity (has on_press, doesn't require HA entity_id validation)
+            if CONF_ON_PRESS in entity_config:
                 continue
             
             # Regular HA entity validation
@@ -483,16 +484,16 @@ CONFIG_SCHEMA = cv.All(
             has_card_type,
             cv.typed_schema({
                 CARD_ENTITIES: SCHEMA_CARD_BASE.extend({
-                    cv.Required(CONF_CARD_ENTITIES): cv.ensure_list(SCHEMA_CARD_ENTITY_OR_ACTION)
+                    cv.Required(CONF_CARD_ENTITIES): cv.ensure_list(SCHEMA_CARD_ENTITY)
                 }),
                 CARD_GRID: SCHEMA_CARD_BASE.extend({
-                    cv.Required(CONF_CARD_ENTITIES): cv.ensure_list(SCHEMA_CARD_ENTITY_OR_ACTION)
+                    cv.Required(CONF_CARD_ENTITIES): cv.ensure_list(SCHEMA_CARD_ENTITY)
                 }),
                 CARD_GRID2: SCHEMA_CARD_BASE.extend({
-                    cv.Required(CONF_CARD_ENTITIES): cv.ensure_list(SCHEMA_CARD_ENTITY_OR_ACTION)
+                    cv.Required(CONF_CARD_ENTITIES): cv.ensure_list(SCHEMA_CARD_ENTITY)
                 }),
                 CARD_QR: SCHEMA_CARD_BASE.extend({
-                    cv.Required(CONF_CARD_ENTITIES): cv.ensure_list(SCHEMA_CARD_ENTITY_OR_ACTION),
+                    cv.Required(CONF_CARD_ENTITIES): cv.ensure_list(SCHEMA_CARD_ENTITY),
                     cv.Optional(CONF_CARD_QR_TEXT): cv.string_strict
                 }),
                 CARD_ALARM: SCHEMA_CARD_BASE.extend({
@@ -508,7 +509,7 @@ CONFIG_SCHEMA = cv.All(
                     cv.Required(CONF_CARD_THERMO_ENTITY_ID): valid_entity_id(['climate'])
                 }),
                 CARD_MEDIA: SCHEMA_CARD_BASE.extend({
-                    cv.Optional(CONF_CARD_ENTITIES): cv.ensure_list(SCHEMA_CARD_ENTITY_OR_ACTION),
+                    cv.Optional(CONF_CARD_ENTITIES): cv.ensure_list(SCHEMA_CARD_ENTITY),
                     cv.Required(CONF_CARD_MEDIA_ENTITY_ID): valid_entity_id(['media_player'])
                 }),
             },
@@ -598,8 +599,8 @@ def gen_card_entities(entities_config, card_class: cg.MockObjClass, card_variabl
         entity_class = cg.global_ns.class_(variable_name)
         entity_class.op = "->"
 
-        # Check if this is an action entity
-        if CONF_CARD_ENTITY_TYPE in entity_config and entity_config[CONF_CARD_ENTITY_TYPE] == CARD_ENTITY_TYPE_ACTION:
+        # Check if this is an action entity (has on_press)
+        if CONF_ON_PRESS in entity_config:
             # Generate a unique ID for this action item
             action_uuid = entity_config.get(CONF_CARD_ENTITY_ID, get_new_uuid("action_"))
             display_name = entity_config.get(CONF_CARD_ENTITIES_NAME, None)
@@ -616,13 +617,12 @@ def gen_card_entities(entities_config, card_class: cg.MockObjClass, card_variabl
             
             generate_icon_config(entity_config.get(CONF_ICON, None), entity_class)
             
-            # Store for automation processing later
-            if CONF_ON_PRESS in entity_config:
-                action_items.append({
-                    'variable_name': variable_name,
-                    'entity_class': entity_class,
-                    'on_press': entity_config[CONF_ON_PRESS]
-                })
+            # Store for automation processing
+            action_items.append({
+                'variable_name': variable_name,
+                'entity_class': entity_class,
+                'on_press': entity_config[CONF_ON_PRESS]
+            })
                 
             cg.add(card_variable.add_item(entity_class))
             continue

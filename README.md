@@ -28,12 +28,11 @@ The NSPanel has on-board PSRAM which this project makes use of automatically, wh
 
 ### Action-Only UI Elements (NEW!)
 
-You can now create UI buttons that execute actions without requiring a Home Assistant entity. This is useful for calling services, running scripts, or controlling internal ESPHome components. See the [Action Items Guide](ACTION_ITEMS_GUIDE.md) for complete documentation and examples.
+You can now create UI buttons that execute actions without requiring a Home Assistant entity. Simply add `on_press:` to any entity item (making `entity_id` optional). This is useful for calling services, running scripts, or controlling internal ESPHome components. See the [Action Items Guide](ACTION_ITEMS_GUIDE.md) for complete documentation and examples.
 
 Quick example:
 ```yaml
-- type: action
-  icon: robot-vacuum
+- icon: robot-vacuum
   name: Start Vacuum
   on_press:
     - homeassistant.service:

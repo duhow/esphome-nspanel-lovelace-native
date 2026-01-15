@@ -11,7 +11,7 @@ As of this version, NSPanel Lovelace Native supports **action-only UI elements**
 
 ## Basic Usage
 
-Action-only elements are defined using `type: action` within a card's `entities:` list:
+Action-only elements are defined by adding `on_press:` to any entity item. When `on_press` is present, the `entity_id` field becomes optional:
 
 ```yaml
 nspanel_lovelace:
@@ -23,9 +23,8 @@ nspanel_lovelace:
         - entity_id: light.living_room
           name: Light
           
-        # NEW: Action-only button
-        - type: action
-          icon: robot-vacuum
+        # NEW: Action-only button (no entity_id needed)
+        - icon: robot-vacuum
           name: Start Vacuum
           on_press:
             - homeassistant.service:
@@ -38,22 +37,21 @@ nspanel_lovelace:
 
 ### Required Fields
 
-- **`type`**: Must be set to `action` to create an action-only element
+For action-only items (without `entity_id`):
 - **`on_press`**: List of actions to execute when the button is pressed (uses standard ESPHome automation syntax)
+- **`icon`**: Icon to display (recommended for visual clarity)
+- **`name`**: Display name shown on the button (recommended)
 
 ### Optional Fields
 
 - **`id`**: Custom identifier for the action item (auto-generated if not provided)
-- **`name`**: Display name shown on the button
-- **`icon`**: Icon to display (name or hex value, e.g., `robot-vacuum` or `hex:E70C`)
 
 ## Examples
 
 ### Example 1: Call Home Assistant Service (Vacuum)
 
 ```yaml
-- type: action
-  icon: robot-vacuum
+- icon: robot-vacuum
   name: Aspira
   on_press:
     - homeassistant.service:
@@ -65,8 +63,7 @@ nspanel_lovelace:
 ### Example 2: Call Home Assistant Action with Area Target
 
 ```yaml
-- type: action
-  id: cover_open_all
+- id: cover_open_all
   icon: chevron-double-up
   name: Open All
   on_press:
@@ -92,8 +89,7 @@ button:
       - logger.log: "Internal button pressed"
 
 # In nspanel_lovelace
-- type: action
-  icon: gesture-tap-button
+- icon: gesture-tap-button
   name: Execute
   on_press:
     - button.press: my_internal_button
@@ -104,8 +100,7 @@ button:
 Action-only buttons can execute multiple actions in sequence:
 
 ```yaml
-- type: action
-  icon: power
+- icon: power
   name: Night Mode
   on_press:
     - homeassistant.service:
@@ -130,8 +125,7 @@ script:
       - logger.log: "Script complete"
 
 # In nspanel_lovelace
-- type: action
-  icon: script-text
+- icon: script-text
   name: Run Script
   on_press:
     - script.execute: my_script
@@ -170,22 +164,19 @@ nspanel_lovelace:
       title: Rollo WZ
       id: rollo_wz
       entities:
-        - type: action
-          id: cover_wz_open_action
+        - id: cover_wz_open_action
           icon: chevron-double-up
           name: Auf
           on_press:
             - button.press: cover_wz_open
             
-        - type: action
-          id: cover_wz_stop_action
+        - id: cover_wz_stop_action
           icon: stop
           name: Stop
           on_press:
             - button.press: cover_wz_stop
             
-        - type: action
-          id: cover_wz_close_action
+        - id: cover_wz_close_action
           icon: chevron-double-down
           name: Zu
           on_press:
