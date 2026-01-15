@@ -234,10 +234,10 @@ void ActionItem::accept(PageItemVisitor& visitor) { visitor.visit(*this); }
 
 std::string &ActionItem::render_(std::string &buffer) {
   // Render similar to GridCardEntityItem: internalName~icon~iconColor~displayName
+  // icon_render_ outputs: icon~iconColor
   buffer.append(this->uuid_);
   buffer.append(SEPARATOR);
   this->icon_render_(buffer);
-  buffer.append(SEPARATOR);
   this->display_name_render_(buffer);
   return buffer;
 }
