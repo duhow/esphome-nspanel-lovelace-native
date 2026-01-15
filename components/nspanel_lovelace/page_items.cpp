@@ -237,7 +237,7 @@ std::string &ActionItem::render_(std::string &buffer) {
   // Render format: internalName~icon~iconColor~displayName
   // icon_render_ outputs: icon~iconColor (with trailing separator)
   buffer.append(this->uuid_);
-  buffer.append(SEPARATOR);
+  buffer.append(1, SEPARATOR);
   this->icon_render_(buffer);
   this->display_name_render_(buffer);
   return buffer;

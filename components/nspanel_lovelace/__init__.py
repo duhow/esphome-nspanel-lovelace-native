@@ -430,15 +430,12 @@ def validate_config(config):
             raise cv.Invalid(f"There must be at most {length_limits[1]} entities for '{card_config[CONF_CARD_TYPE]}' cards", err_path)
 
         for entity_config in entities:
-            # Check if this is an action entity (no entity_id)
+            # Check if this is an action entity (doesn't require HA entity_id validation)
             if CONF_CARD_ENTITY_TYPE in entity_config and entity_config[CONF_CARD_ENTITY_TYPE] == CARD_ENTITY_TYPE_ACTION:
-                # Action entities don't need entity_id validation
                 continue
             
-            # Regular entity validation - entity_id is required by schema
+            # Regular HA entity validation
             entity_id = entity_config.get(CONF_ENTITY_ID)
-            if not entity_id:
-                continue
             
             if entity_id.startswith('navigate'):
                 entity_arr = entity_id.split('.', 1)
