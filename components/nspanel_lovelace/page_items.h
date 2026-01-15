@@ -174,7 +174,6 @@ class ActionItem :
 public:
   ActionItem(const std::string &uuid);
   ActionItem(const std::string &uuid, const std::string &display_name);
-  // virtual ~ActionItem() {}
 
   void accept(PageItemVisitor& visitor) override;
   

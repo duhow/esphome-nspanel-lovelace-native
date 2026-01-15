@@ -436,8 +436,9 @@ def validate_config(config):
                 continue
             
             entity_id = entity_config.get(CONF_ENTITY_ID)
+            # entity_id is optional for action-only items, which are handled above
             if entity_id is None:
-                continue  # Should not happen due to schema validation
+                continue
             
             if entity_id.startswith('navigate'):
                 entity_arr = entity_id.split('.', 1)
@@ -606,10 +607,15 @@ def gen_card_entities(entities_config, card_class: cg.MockObjClass, card_variabl
             action_uuid = entity_config.get(CONF_CARD_ENTITY_ID, get_new_uuid("action_"))
             display_name = entity_config.get(CONF_CARD_ENTITIES_NAME, None)
             
-            # Create ActionItem
-            cg.add(cg.RawExpression(
-                f"auto {variable_name} = "
-                f"{make_shared.template(ActionItem).__call__(action_uuid, display_name)}"))
+            # Create ActionItem with appropriate constructor
+            if display_name is not None:
+                cg.add(cg.RawExpression(
+                    f"auto {variable_name} = "
+                    f"{make_shared.template(ActionItem).__call__(action_uuid, display_name)}"))
+            else:
+                cg.add(cg.RawExpression(
+                    f"auto {variable_name} = "
+                    f"{make_shared.template(ActionItem).__call__(action_uuid)}"))
             
             generate_icon_config(entity_config.get(CONF_ICON, None), entity_class)
             
