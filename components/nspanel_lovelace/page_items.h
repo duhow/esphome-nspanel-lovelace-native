@@ -163,5 +163,30 @@ protected:
   std::string &render_(std::string &buffer) override;
 };
 
+/*
+ * =============== ActionItem ===============
+ */
+
+class ActionItem : 
+    public PageItem,
+    public PageItem_Icon,
+    public PageItem_DisplayName {
+public:
+  ActionItem(const std::string &uuid);
+  ActionItem(const std::string &uuid, const std::string &display_name);
+  // virtual ~ActionItem() {}
+
+  void accept(PageItemVisitor& visitor) override;
+  
+  // Get the trigger for automation
+  Trigger<> *get_trigger() { return &this->trigger_; }
+
+protected:
+  Trigger<> trigger_;
+  
+  // output: internalName~icon~iconColor~displayName~buttonType
+  std::string &render_(std::string &buffer) override;
+};
+
 } // namespace nspanel_lovelace
 } // namespace esphome

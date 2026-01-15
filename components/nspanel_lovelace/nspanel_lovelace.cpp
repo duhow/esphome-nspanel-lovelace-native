@@ -1787,6 +1787,20 @@ void NSPanelLovelace::process_button_press_(
   std::string& entity_id = internal_id;
   
   if (entity_type == entity_type::uuid) {
+    // Check if this is an action item before trying to resolve to entity_id
+    auto uuid = internal_id.substr(5);
+    auto item = this->get_page_item_(uuid);
+    if (item != nullptr) {
+      // Try to cast to ActionItem
+      auto action_item = page_item_cast<ActionItem>(item);
+      if (action_item != nullptr) {
+        // This is an action item - trigger it
+        ESP_LOGD(TAG, "Triggering action item: %s", internal_id.c_str());
+        action_item->get_trigger()->trigger();
+        return;
+      }
+    }
+    
     entity_id = this->try_replace_uuid_with_entity_id_(internal_id);
     ESP_LOGV(TAG, "Lookup %s -> %s", internal_id.c_str(), entity_id.c_str());
     entity_type = get_entity_type(entity_id);

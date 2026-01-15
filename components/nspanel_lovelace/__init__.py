@@ -32,6 +32,7 @@ card_ids: dict[str] = {}
 entity_ids: dict[str] = {}
 entity_id_index = 0
 uuid_index = 0
+action_items: list = []  # Store action items for automation processing
 iconJson = None
 translationJson = None
 make_shared = cg.std_ns.class_("make_shared")
@@ -142,6 +143,11 @@ CONF_CARD_HIDDEN = "hidden"
 CONF_CARD_TITLE = "title"
 CONF_CARD_ENTITIES = "entities"
 CONF_CARD_ENTITIES_NAME = "name"
+CONF_CARD_ENTITY_TYPE = "type"
+CONF_CARD_ENTITY_ID = "id"
+CONF_ON_PRESS = "on_press"
+
+CARD_ENTITY_TYPE_ACTION = "action"
 
 CARD_ENTITIES="cardEntities"
 CARD_GRID="cardGrid"
@@ -343,6 +349,14 @@ SCHEMA_SCREENSAVER = cv.Schema({
     cv.Optional(CONF_SCREENSAVER_STATUS_ICON_RIGHT): SCHEMA_STATUS_ICON,
 })
 
+SCHEMA_CARD_ACTION_ENTITY = cv.Schema({
+    cv.Required(CONF_CARD_ENTITY_TYPE): cv.one_of(CARD_ENTITY_TYPE_ACTION),
+    cv.Optional(CONF_CARD_ENTITY_ID): valid_uuid,
+    cv.Optional(CONF_CARD_ENTITIES_NAME): cv.string,
+    cv.Optional(CONF_ICON): SCHEMA_ICON,
+    cv.Required(CONF_ON_PRESS): automation.validate_automation(single=True),
+})
+
 SCHEMA_CARD_ENTITY = cv.Schema({
     cv.Required(CONF_ENTITY_ID): valid_entity_id(),
     cv.Optional(CONF_CARD_ENTITIES_NAME): cv.string,
@@ -357,6 +371,9 @@ SCHEMA_CARD_BASE = cv.Schema({
     # note: Max is limited by HMI firmware: https://github.com/joBr99/nspanel-lovelace-ui/blob/22e96f2b3ad0cd3382008eac9b4d6a27982404b8/HMI/README.md?plain=1#L91
     cv.Optional(CONF_SLEEP_TIMEOUT, default=10): cv.int_range(0, 120)
 })
+
+# Combined schema that accepts either regular entities or action entities
+SCHEMA_CARD_ENTITY_OR_ACTION = cv.Any(SCHEMA_CARD_ENTITY, SCHEMA_CARD_ACTION_ENTITY)
 
 def add_entity_id(id: str):
     global entity_ids, entity_id_index
@@ -413,7 +430,15 @@ def validate_config(config):
             raise cv.Invalid(f"There must be at most {length_limits[1]} entities for '{card_config[CONF_CARD_TYPE]}' cards", err_path)
 
         for entity_config in entities:
+            # Check if this is an action entity (no entity_id)
+            if CONF_CARD_ENTITY_TYPE in entity_config and entity_config[CONF_CARD_ENTITY_TYPE] == CARD_ENTITY_TYPE_ACTION:
+                # Action entities don't need entity_id validation
+                continue
+            
             entity_id = entity_config.get(CONF_ENTITY_ID)
+            if entity_id is None:
+                continue  # Should not happen due to schema validation
+            
             if entity_id.startswith('navigate'):
                 entity_arr = entity_id.split('.', 1)
                 # if len(entity_arr) != 2:
@@ -460,16 +485,16 @@ CONFIG_SCHEMA = cv.All(
             has_card_type,
             cv.typed_schema({
                 CARD_ENTITIES: SCHEMA_CARD_BASE.extend({
-                    cv.Required(CONF_CARD_ENTITIES): cv.ensure_list(SCHEMA_CARD_ENTITY)
+                    cv.Required(CONF_CARD_ENTITIES): cv.ensure_list(SCHEMA_CARD_ENTITY_OR_ACTION)
                 }),
                 CARD_GRID: SCHEMA_CARD_BASE.extend({
-                    cv.Required(CONF_CARD_ENTITIES): cv.ensure_list(SCHEMA_CARD_ENTITY)
+                    cv.Required(CONF_CARD_ENTITIES): cv.ensure_list(SCHEMA_CARD_ENTITY_OR_ACTION)
                 }),
                 CARD_GRID2: SCHEMA_CARD_BASE.extend({
-                    cv.Required(CONF_CARD_ENTITIES): cv.ensure_list(SCHEMA_CARD_ENTITY)
+                    cv.Required(CONF_CARD_ENTITIES): cv.ensure_list(SCHEMA_CARD_ENTITY_OR_ACTION)
                 }),
                 CARD_QR: SCHEMA_CARD_BASE.extend({
-                    cv.Required(CONF_CARD_ENTITIES): cv.ensure_list(SCHEMA_CARD_ENTITY),
+                    cv.Required(CONF_CARD_ENTITIES): cv.ensure_list(SCHEMA_CARD_ENTITY_OR_ACTION),
                     cv.Optional(CONF_CARD_QR_TEXT): cv.string_strict
                 }),
                 CARD_ALARM: SCHEMA_CARD_BASE.extend({
@@ -485,7 +510,7 @@ CONFIG_SCHEMA = cv.All(
                     cv.Required(CONF_CARD_THERMO_ENTITY_ID): valid_entity_id(['climate'])
                 }),
                 CARD_MEDIA: SCHEMA_CARD_BASE.extend({
-                    cv.Optional(CONF_CARD_ENTITIES): cv.ensure_list(SCHEMA_CARD_ENTITY),
+                    cv.Optional(CONF_CARD_ENTITIES): cv.ensure_list(SCHEMA_CARD_ENTITY_OR_ACTION),
                     cv.Required(CONF_CARD_MEDIA_ENTITY_ID): valid_entity_id(['media_player'])
                 }),
             },
@@ -519,6 +544,7 @@ WeatherItem = nspanel_lovelace_ns.class_("WeatherItem")
 EntitiesCardEntityItem = nspanel_lovelace_ns.class_("EntitiesCardEntityItem")
 GridCardEntityItem = nspanel_lovelace_ns.class_("GridCardEntityItem")
 AlarmButtonItem = nspanel_lovelace_ns.class_("AlarmButtonItem")
+ActionItem = nspanel_lovelace_ns.class_("ActionItem")
 
 PageType = nspanel_lovelace_ns.enum("page_type", True)
 
@@ -568,10 +594,35 @@ def generate_icon_config(icon_config, parent_class: cg.MockObj = None) -> Union[
         return attrs
 
 def gen_card_entities(entities_config, card_class: cg.MockObjClass, card_variable: cg.MockObjClass, entity_type: cg.MockObjClass):
+    global action_items
     for i, entity_config in enumerate(entities_config):
         variable_name = card_variable.__str__() + "_item_" + str(i + 1)
         entity_class = cg.global_ns.class_(variable_name)
         entity_class.op = "->"
+
+        # Check if this is an action entity
+        if CONF_CARD_ENTITY_TYPE in entity_config and entity_config[CONF_CARD_ENTITY_TYPE] == CARD_ENTITY_TYPE_ACTION:
+            # Generate a unique ID for this action item
+            action_uuid = entity_config.get(CONF_CARD_ENTITY_ID, get_new_uuid("action_"))
+            display_name = entity_config.get(CONF_CARD_ENTITIES_NAME, None)
+            
+            # Create ActionItem
+            cg.add(cg.RawExpression(
+                f"auto {variable_name} = "
+                f"{make_shared.template(ActionItem).__call__(action_uuid, display_name)}"))
+            
+            generate_icon_config(entity_config.get(CONF_ICON, None), entity_class)
+            
+            # Store for automation processing later
+            if CONF_ON_PRESS in entity_config:
+                action_items.append({
+                    'variable_name': variable_name,
+                    'entity_class': entity_class,
+                    'on_press': entity_config[CONF_ON_PRESS]
+                })
+                
+            cg.add(card_variable.add_item(entity_class))
+            continue
 
         if entity_config.get(CONF_ENTITY_ID, "delete").startswith('delete'):
             cg.add(cg.RawExpression(
@@ -900,6 +951,21 @@ async def to_code(config):
         if config[CONF_DEFAULT_CARD] in card_ids:
             # Note: can only be called after all the default page has been created
             cg.add(nspanel.set_default_page(config[CONF_DEFAULT_CARD]))
+
+    # Process action items and build automations
+    global action_items
+    for action_item in action_items:
+        variable_name = action_item['variable_name']
+        entity_class = action_item['entity_class']
+        on_press_config = action_item['on_press']
+        
+        # Get the trigger from the ActionItem
+        trigger_var = cg.global_ns.class_(f"{variable_name}_trigger")
+        trigger_var.op = "->"
+        cg.add(cg.RawExpression(f"auto {variable_name}_trigger = {entity_class}->get_trigger()"))
+        
+        # Build the automation
+        await automation.build_automation(trigger_var, [], on_press_config)
 
     global custom_icons
     icon_arr: list[str] = []
