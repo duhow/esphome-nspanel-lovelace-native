@@ -51,8 +51,8 @@ logger:
   baud_rate: 115200
 
 wifi:
-  ssid: "testwifi"
-  password: "testpass123"
+  ssid: "your_wifi_ssid"
+  password: "your_wifi_password"
 
 api:
 

@@ -438,7 +438,6 @@ def validate_config(config):
             # Regular entity validation - entity_id is required by schema
             entity_id = entity_config.get(CONF_ENTITY_ID)
             if not entity_id:
-                # Schema should prevent this, but handle gracefully
                 continue
             
             if entity_id.startswith('navigate'):

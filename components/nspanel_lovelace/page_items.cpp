@@ -8,6 +8,7 @@
 #include <string>
 #include <vector>
 #include "esphome/core/helpers.h"
+#include "esphome/core/automation.h"
 
 namespace esphome {
 namespace nspanel_lovelace {
