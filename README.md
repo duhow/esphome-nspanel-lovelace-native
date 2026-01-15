@@ -26,6 +26,22 @@ A basic configuration can be found in the [basic example](basic-example.yaml), b
 
 The NSPanel has on-board PSRAM which this project makes use of automatically, which means that the `psram` component is unavailable because the PSRAM is configured during code generation by adding specific `sdkconfig_options`. Additionally, when using Arduino (which is deprecated) the PSRAM cannot be used as it is not possible to customise the PSRAM pins for the Arduino framework build.
 
+### Action-Only UI Elements (NEW!)
+
+You can now create UI buttons that execute actions without requiring a Home Assistant entity. This is useful for calling services, running scripts, or controlling internal ESPHome components. See the [Action Items Guide](ACTION_ITEMS_GUIDE.md) for complete documentation and examples.
+
+Quick example:
+```yaml
+- type: action
+  icon: robot-vacuum
+  name: Start Vacuum
+  on_press:
+    - homeassistant.service:
+        service: vacuum.start
+        data:
+          entity_id: vacuum.mi_robot
+```
+
 ### Icons
 
 - Icon values can be an icon name or hex value (e.g. `hex:E549`). A list of icons can be found here: https://docs.nspanel.pky.eu/icon-cheatsheet.html
@@ -43,6 +59,7 @@ Currently the following features work:
 - Screensaver with time, date, weather and status icon display
 - Support for `cardGrid`, `cardGrid2`, `cardEntities`, `cardQR`, `cardAlarm`, `cardThermo`, `cardMedia`
 - Most entity types should display on cards. Lights, switches, sensors and scenes have been tested to work, with additional support for the `popupLight` and `popupTimer` pages.
+- **NEW**: Action-only UI elements for buttons that execute actions without requiring Home Assistant entities
 
 There is currently no support for these cards: `cardPower`. `cardUnlock`, `cardChart` - but these are planned for the future.
 Please see the [HMI readme](https://github.com/joBr99/nspanel-lovelace-ui/tree/main/HMI) for more info on the cards mentioned above.
