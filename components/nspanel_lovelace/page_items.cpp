@@ -218,14 +218,14 @@ std::string &DeleteItem::render_(std::string &buffer) {
 
 ActionItem::ActionItem(const std::string &uuid) :
     PageItem(uuid), 
-    PageItem_Icon(this, 65535u),
+    PageItem_Icon(this, DEFAULT_ICON_COLOR),
     PageItem_DisplayName(this, "Action") {
   this->render_buffer_.reserve(this->get_render_buffer_reserve_());
 }
 
 ActionItem::ActionItem(const std::string &uuid, const std::string &display_name) :
     PageItem(uuid),
-    PageItem_Icon(this, 65535u),
+    PageItem_Icon(this, DEFAULT_ICON_COLOR),
     PageItem_DisplayName(this, display_name) {
   this->render_buffer_.reserve(this->get_render_buffer_reserve_());
 }

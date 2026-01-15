@@ -5,6 +5,9 @@ namespace nspanel_lovelace {
 
 #define M_PI 3.14159265358979323846 // pi
 
+// Default icon color (white in RGB565 format)
+constexpr uint16_t DEFAULT_ICON_COLOR = 65535u;
+
 #ifdef __GNUC__
 #define PACK(__Declaration__) __Declaration__ __attribute__((__packed__))
 #endif
