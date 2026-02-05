@@ -1,0 +1,68 @@
+# Test configuration example for action-only UI elements
+# This is a minimal test to validate the new action item feature
+
+esphome:
+  name: nspanel-test-action
+  name_add_mac_suffix: true
+  comment: "ESPHome NSPanel Test - Action Items"
+  build_path: ./.build/nspanel-test-action
+
+esp32:
+  board: esp32dev
+  framework:
+    type: esp-idf
+
+external_components:
+  - source:
+      type: local
+      path: components
+    components: [nspanel_lovelace]
+
+nspanel_lovelace:
+  id: nspanel
+  screensaver:
+    time_id: homeassistant_time
+  cards:
+    - type: cardGrid
+      id: test_actions
+      title: Test Actions
+      entities:
+        # Regular entity
+        - entity_id: light.test_light
+          name: Test Light
+        # Action-only button that calls a Home Assistant service
+        - icon: robot-vacuum
+          name: Vacuum Start
+          on_press:
+            - homeassistant.service:
+                service: vacuum.start
+                data:
+                  entity_id: vacuum.mi_robot
+        # Action-only button for internal ESPHome action
+        - icon: arrow-up
+          name: Test Script
+          on_press:
+            - logger.log: "Action button pressed!"
+
+logger:
+  baud_rate: 115200
+
+wifi:
+  ssid: "your_wifi_ssid"
+  password: "your_wifi_password"
+
+api:
+
+ota:
+  platform: esphome
+
+uart:
+  id: uart_nextion
+  tx_pin: 16
+  rx_pin: 17
+  baud_rate: 115200
+
+time:
+  - platform: homeassistant
+    id: homeassistant_time
+    timezone: UTC

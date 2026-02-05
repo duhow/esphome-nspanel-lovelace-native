@@ -32,6 +32,7 @@ card_ids: dict[str] = {}
 entity_ids: dict[str] = {}
 entity_id_index = 0
 uuid_index = 0
+action_items: list = []  # Store action items for automation processing
 iconJson = None
 translationJson = None
 make_shared = cg.std_ns.class_("make_shared")
@@ -142,6 +143,8 @@ CONF_CARD_HIDDEN = "hidden"
 CONF_CARD_TITLE = "title"
 CONF_CARD_ENTITIES = "entities"
 CONF_CARD_ENTITIES_NAME = "name"
+CONF_CARD_ENTITY_ID = "id"
+CONF_ON_PRESS = "on_press"
 
 CARD_ENTITIES="cardEntities"
 CARD_GRID="cardGrid"
@@ -343,11 +346,26 @@ SCHEMA_SCREENSAVER = cv.Schema({
     cv.Optional(CONF_SCREENSAVER_STATUS_ICON_RIGHT): SCHEMA_STATUS_ICON,
 })
 
-SCHEMA_CARD_ENTITY = cv.Schema({
-    cv.Required(CONF_ENTITY_ID): valid_entity_id(),
-    cv.Optional(CONF_CARD_ENTITIES_NAME): cv.string,
-    cv.Optional(CONF_ICON): SCHEMA_ICON,
-})
+def validate_entity_or_action(config):
+    """Validate that entity has either entity_id or on_press defined."""
+    has_entity_id = CONF_ENTITY_ID in config
+    has_on_press = CONF_ON_PRESS in config
+    
+    if not has_entity_id and not has_on_press:
+        raise cv.Invalid("Either 'entity_id' or 'on_press' must be specified")
+    
+    return config
+
+SCHEMA_CARD_ENTITY = cv.All(
+    cv.Schema({
+        cv.Optional(CONF_ENTITY_ID): valid_entity_id(),
+        cv.Optional(CONF_CARD_ENTITY_ID): valid_uuid,
+        cv.Optional(CONF_CARD_ENTITIES_NAME): cv.string,
+        cv.Optional(CONF_ICON): SCHEMA_ICON,
+        cv.Optional(CONF_ON_PRESS): automation.validate_automation(single=True),
+    }),
+    validate_entity_or_action
+)
 
 SCHEMA_CARD_BASE = cv.Schema({
     cv.Optional(CONF_ID): valid_uuid,
@@ -413,7 +431,13 @@ def validate_config(config):
             raise cv.Invalid(f"There must be at most {length_limits[1]} entities for '{card_config[CONF_CARD_TYPE]}' cards", err_path)
 
         for entity_config in entities:
+            # Check if this is an action entity (has on_press, doesn't require HA entity_id validation)
+            if CONF_ON_PRESS in entity_config:
+                continue
+            
+            # Regular HA entity validation
             entity_id = entity_config.get(CONF_ENTITY_ID)
+            
             if entity_id.startswith('navigate'):
                 entity_arr = entity_id.split('.', 1)
                 # if len(entity_arr) != 2:
@@ -519,6 +543,7 @@ WeatherItem = nspanel_lovelace_ns.class_("WeatherItem")
 EntitiesCardEntityItem = nspanel_lovelace_ns.class_("EntitiesCardEntityItem")
 GridCardEntityItem = nspanel_lovelace_ns.class_("GridCardEntityItem")
 AlarmButtonItem = nspanel_lovelace_ns.class_("AlarmButtonItem")
+ActionItem = nspanel_lovelace_ns.class_("ActionItem")
 
 PageType = nspanel_lovelace_ns.enum("page_type", True)
 
@@ -568,10 +593,39 @@ def generate_icon_config(icon_config, parent_class: cg.MockObj = None) -> Union[
         return attrs
 
 def gen_card_entities(entities_config, card_class: cg.MockObjClass, card_variable: cg.MockObjClass, entity_type: cg.MockObjClass):
+    global action_items
     for i, entity_config in enumerate(entities_config):
         variable_name = card_variable.__str__() + "_item_" + str(i + 1)
         entity_class = cg.global_ns.class_(variable_name)
         entity_class.op = "->"
+
+        # Check if this is an action entity (has on_press)
+        if CONF_ON_PRESS in entity_config:
+            # Generate a unique ID for this action item
+            action_uuid = entity_config.get(CONF_CARD_ENTITY_ID, get_new_uuid("action_"))
+            display_name = entity_config.get(CONF_CARD_ENTITIES_NAME, None)
+            
+            # Create ActionItem with appropriate constructor
+            if display_name is not None:
+                cg.add(cg.RawExpression(
+                    f"auto {variable_name} = "
+                    f"{make_shared.template(ActionItem).__call__(action_uuid, display_name)}"))
+            else:
+                cg.add(cg.RawExpression(
+                    f"auto {variable_name} = "
+                    f"{make_shared.template(ActionItem).__call__(action_uuid)}"))
+            
+            generate_icon_config(entity_config.get(CONF_ICON, None), entity_class)
+            
+            # Store for automation processing
+            action_items.append({
+                'variable_name': variable_name,
+                'entity_class': entity_class,
+                'on_press': entity_config[CONF_ON_PRESS]
+            })
+                
+            cg.add(card_variable.add_item(entity_class))
+            continue
 
         if entity_config.get(CONF_ENTITY_ID, "delete").startswith('delete'):
             cg.add(cg.RawExpression(
@@ -900,6 +954,21 @@ async def to_code(config):
         if config[CONF_DEFAULT_CARD] in card_ids:
             # Note: can only be called after all the default page has been created
             cg.add(nspanel.set_default_page(config[CONF_DEFAULT_CARD]))
+
+    # Process action items and build automations
+    global action_items
+    for action_item in action_items:
+        variable_name = action_item['variable_name']
+        entity_class = action_item['entity_class']
+        on_press_config = action_item['on_press']
+        
+        # Get the trigger from the ActionItem
+        trigger_var = cg.global_ns.class_(f"{variable_name}_trigger")
+        trigger_var.op = "->"
+        cg.add(cg.RawExpression(f"auto {variable_name}_trigger = {entity_class}->get_trigger()"))
+        
+        # Build the automation
+        await automation.build_automation(trigger_var, [], on_press_config)
 
     global custom_icons
     icon_arr: list[str] = []

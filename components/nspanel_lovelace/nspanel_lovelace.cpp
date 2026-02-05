@@ -767,7 +767,7 @@ bool NSPanelLovelace::render_popup_page_update_(const std::string &internal_id) 
     return rendered;
   }
 
-  auto uuid = internal_id.substr(5);
+  auto uuid = internal_id.substr(UUID_PREFIX_LENGTH);
 
   if (this->cached_page_item_ == nullptr || this->cached_page_item_->get_uuid() != uuid) {
     if (page->get_items().size() == 0) return false;
@@ -1706,7 +1706,7 @@ const std::string &NSPanelLovelace::try_replace_uuid_with_entity_id_(
   if (!esphome::str_startswith(uuid_or_entity_id, entity_type::uuid))
     return uuid_or_entity_id;
 
-  auto uuid = uuid_or_entity_id.substr(5);
+  auto uuid = uuid_or_entity_id.substr(UUID_PREFIX_LENGTH);
   auto item = this->get_page_item_(uuid);
   if (item == nullptr) return uuid_or_entity_id;
   
@@ -1787,6 +1787,20 @@ void NSPanelLovelace::process_button_press_(
   std::string& entity_id = internal_id;
   
   if (entity_type == entity_type::uuid) {
+    // Check if this is an action item before trying to resolve to entity_id
+    auto uuid = internal_id.substr(UUID_PREFIX_LENGTH);
+    auto item = this->get_page_item_(uuid);
+    if (item != nullptr) {
+      // Try to cast to ActionItem
+      auto action_item = page_item_cast<ActionItem>(item);
+      if (action_item != nullptr) {
+        // This is an action item - trigger it
+        ESP_LOGD(TAG, "Triggering action item: %s", internal_id.c_str());
+        action_item->get_trigger()->trigger();
+        return;
+      }
+    }
+    
     entity_id = this->try_replace_uuid_with_entity_id_(internal_id);
     ESP_LOGV(TAG, "Lookup %s -> %s", internal_id.c_str(), entity_id.c_str());
     entity_type = get_entity_type(entity_id);
