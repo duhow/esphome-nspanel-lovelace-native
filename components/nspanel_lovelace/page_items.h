@@ -6,6 +6,7 @@
 #include "page_item_base.h"
 #include "page_item_visitor.h"
 #include "types.h"
+#include "esphome/core/automation.h"
 #include <array>
 #include <functional>
 #include <string>
@@ -13,9 +14,6 @@
 
 namespace esphome {
 namespace nspanel_lovelace {
-
-// Forward declaration for Trigger
-template<typename... Ts> class Trigger;
 
 /*
  * =============== NavigationItem ===============
