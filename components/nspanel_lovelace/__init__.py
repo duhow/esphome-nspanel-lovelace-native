@@ -170,7 +170,7 @@ def load_icons():
             iconJson = json.load(read_file)
     except (UnicodeDecodeError, OSError):
         import requests
-        response = requests.get("https://raw.githubusercontent.com/olicooper/esphome-nspanel-lovelace-native/dev/components/nspanel_lovelace/icons.json")
+        response = requests.get("https://raw.githubusercontent.com/duhow/esphome-nspanel-lovelace-native/dev/components/nspanel_lovelace/icons.json")
         if response.ok:
             with open(iconJsonPath, mode="w", encoding="utf-8") as new_file:
                 new_file.write(response.text)
