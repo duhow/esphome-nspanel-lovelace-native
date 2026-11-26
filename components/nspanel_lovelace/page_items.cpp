@@ -8,6 +8,7 @@
 #include <string>
 #include <vector>
 #include "esphome/core/helpers.h"
+#include "esphome/core/automation.h"
 
 namespace esphome {
 namespace nspanel_lovelace {
@@ -210,6 +211,36 @@ void DeleteItem::accept(PageItemVisitor& visitor) { visitor.visit(*this); }
 
 std::string &DeleteItem::render_(std::string &buffer) {
   return buffer.append(this->uuid_);
+}
+
+/*
+ * =============== ActionItem ===============
+ */
+
+ActionItem::ActionItem(const std::string &uuid) :
+    PageItem(uuid), 
+    PageItem_Icon(this, DEFAULT_ICON_COLOR),
+    PageItem_DisplayName(this, "Action") {
+  this->render_buffer_.reserve(this->get_render_buffer_reserve_());
+}
+
+ActionItem::ActionItem(const std::string &uuid, const std::string &display_name) :
+    PageItem(uuid),
+    PageItem_Icon(this, DEFAULT_ICON_COLOR),
+    PageItem_DisplayName(this, display_name) {
+  this->render_buffer_.reserve(this->get_render_buffer_reserve_());
+}
+
+void ActionItem::accept(PageItemVisitor& visitor) { visitor.visit(*this); }
+
+std::string &ActionItem::render_(std::string &buffer) {
+  // Render format: internalName~icon~iconColor~displayName
+  // PageItem_Icon::render_ outputs: icon~iconColor (with trailing separator)
+  buffer.append(this->uuid_);
+  buffer.append(1, SEPARATOR);
+  PageItem_Icon::render_(buffer);
+  PageItem_DisplayName::render_(buffer);
+  return buffer;
 }
 
 } // namespace nspanel_lovelace

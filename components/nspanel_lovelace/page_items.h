@@ -6,6 +6,7 @@
 #include "page_item_base.h"
 #include "page_item_visitor.h"
 #include "types.h"
+#include "esphome/core/automation.h"
 #include <array>
 #include <functional>
 #include <string>
@@ -160,6 +161,30 @@ public:
 
 protected:
   // output: delete~ (seperator quantity varies based on page_type/separator_quantity)
+  std::string &render_(std::string &buffer) override;
+};
+
+/*
+ * =============== ActionItem ===============
+ */
+
+class ActionItem : 
+    public PageItem,
+    public PageItem_Icon,
+    public PageItem_DisplayName {
+public:
+  ActionItem(const std::string &uuid);
+  ActionItem(const std::string &uuid, const std::string &display_name);
+
+  void accept(PageItemVisitor& visitor) override;
+  
+  // Get the trigger for automation
+  Trigger<> *get_trigger() { return &this->trigger_; }
+
+protected:
+  Trigger<> trigger_;
+  
+  // output: internalName~icon~iconColor~displayName
   std::string &render_(std::string &buffer) override;
 };
 
